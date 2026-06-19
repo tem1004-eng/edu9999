@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>주일학교 출석부</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#56ab2f">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ============================================== */
+        /* 화면 기본 스타일 */
+        /* ============================================== */
+        body { margin: 0; font-family: 'Noto Sans KR', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; -webkit-tap-highlight-color: transparent; }
+        #app-container { width: 100%; max-width: 480px; background-color: #f4f7f6; min-height: 100vh; position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        
+        .header { 
+            position: relative; background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
+            padding: calc(30px + env(safe-area-inset-top)) 20px 35px; color: white; text-align: center; 
+            border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; box-shadow: 0 4px 10px rgba(86, 171, 47, 0.2); 
+            z-index: 5;
+        }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .title-area { text-align: left; }
+        .title-area h2 { margin: 0 0 10px 0; font-size: 1.4em; font-weight: 700; letter-spacing: -0.5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.2); }
+        
+        .dept-title-span { border-bottom: 2px dashed rgba(255,255,255,0.7); padding-bottom: 2px; cursor: pointer; transition: opacity 0.2s; }
+        .dept-title-span:active { opacity: 0.7; }
+
+        .memo-toggle-btn { font-size: 0.8em; background: rgba(255,255,255,0.9); border: none; color: #2e7d32; font-weight: 700; padding: 6px 12px; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 4px; transition: transform 0.1s; }
+        .memo-toggle-btn:active { transform: scale(0.95); }
+
+        .teacher-profile { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .teacher-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer; background-color: rgba(255,255,255,0.3); }
+        .teacher-name { font-size: 0.85em; font-weight: 700; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); text-align: center; min-width: 60px; }
+
+        .header-controls { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; }
+        .current-date-display { font-size: 1.1em; font-weight: 700; background: rgba(0,0,0,0.25); display: inline-block; padding: 8px 18px; border-radius: 20px; cursor: pointer; backdrop-filter: blur(2px); border: 1px solid rgba(255,255,255,0.2); margin: 0; }
+        
+        .notice-btn { font-size: 0.95em; font-weight: 700; background: #fff; color: #E65100; border: none; padding: 8px 14px; border-radius: 20px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; transition: transform 0.1s; }
+        .notice-btn:active { transform: scale(0.95); }
+
+        .action-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 5px; }
+        .inquiry-btn, .sms-btn, .print-btn, .backup-btn { background: #fff; border: none; padding: 8px 12px; border-radius: 20px; font-weight: 700; font-size: 0.9em; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; transition: transform 0.1s; }
+        .inquiry-btn:active, .sms-btn:active, .print-btn:active, .backup-btn:active { transform: scale(0.95); }
+        .inquiry-btn { color: #2e7d32; } .sms-btn { color: #1565C0; } .print-btn { color: #E65100; } .backup-btn { color: #6A1B9A; }
+        
+        .class-info { margin-top: 15px; font-size: 1.05em; font-weight: 500; color: white; line-height: 1.8; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
+        .editable { display: inline-block; min-width: 40px; border-bottom: 1px dashed rgba(255,255,255,0.6); outline: none; font-weight: 700; padding: 0 2px; cursor: text; }
+        .editable:focus { background: rgba(0,0,0,0.3); border-bottom: 1px solid transparent; border-radius: 4px; }
+        .editable:empty:before { content: attr(data-placeholder); color: rgba(255,255,255,0.7); font-weight: 400; }
+
+        /* 다가오는 일정 알림판 스타일 */
+        .upcoming-card { background: #fff; border-radius: 16px; padding: 15px; margin: -20px 20px 15px 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; z-index: 10; border: 1px solid #f0f0f0; }
+        .upcoming-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        .upcoming-title { font-weight: 700; color: #E65100; font-size: 0.95em; display:flex; align-items:center; gap:5px; }
+        .upcoming-item { display: flex; align-items: center; gap: 8px; font-size: 0.9em; color: #444; margin-bottom: 6px; }
+        .upcoming-badge { padding: 2px 6px; border-radius: 6px; font-size: 0.8em; font-weight:700; flex-shrink: 0; }
+        .upcoming-badge.birth { background: #ffebee; color: #c62828; }
+        .upcoming-badge.event { background: #e3f2fd; color: #1565c0; }
+        .upcoming-empty { font-size: 0.85em; color: #999; text-align: center; padding: 5px 0; }
+
+        /* 학생 출석 리스트 */
+        .list-container { padding: 0 20px 20px 20px; padding-bottom: calc(100px + env(safe-area-inset-bottom)); flex-grow: 1; }
+        .summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 5px; }
+        .attendance-summary { font-weight: 700; font-size: 0.9em; }
+        .setting-btn { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 6px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 700; color: #2e7d32; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+        .student-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 16px; padding: 15px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.03); flex-wrap: wrap; gap: 15px; }
+        .student-info { flex: 1; min-width: 140px; display: flex; align-items: center; gap: 12px; }
+        .list-student-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; background-color: #f8f9fa; }
+        .student-text-info { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+        .student-name { font-weight: 700; color: #1976D2; font-size: 1.15em; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: #bbdefb; display: flex; align-items: center; }
+        .student-role-badge { font-size: 0.65em; background: #f0f0f0; color: #555; padding: 2px 6px; border-radius: 6px; margin-left: 6px; text-decoration: none; display: inline-block; }
+        
+        .check-group { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+        .check-item { display: flex; flex-direction: column; align-items: center; font-size: 0.75em; color: #666; font-weight: 600; gap: 5px; cursor: pointer; }
+        .check-item input[type="checkbox"] { width: 24px; height: 24px; accent-color: #56ab2f; margin: 0; cursor: pointer; }
+        .check-item.absent input[type="checkbox"] { accent-color: #c62828; } 
+        .check-item-name { max-width: 50px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .fab { position: fixed; bottom: calc(30px + env(safe-area-inset-bottom)); right: 25px; width: 60px; height: 60px; background: linear-gradient(135deg, #ff9a44 0%, #fc6076 100%); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: 300; box-shadow: 0 6px 16px rgba(252, 96, 118, 0.4); border: none; cursor: pointer; z-index: 100; padding-bottom: 4px; }
+        .footer-logo { text-align: center; padding: 0 0 calc(30px + env(safe-area-inset-bottom)); font-size: 0.75em; color: #d0d0d0; font-weight: 500; letter-spacing: 1px; }
+
+        /* 모달 스타일 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .modal-content { background: white; width: 85%; max-width: 350px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 85vh; overflow-y: auto; position: relative; transition: all 0.3s ease; }
+        .modal-title { font-weight: 700; margin-bottom: 15px; text-align: center; font-size: 1.2em; color: #333; }
+        
+        .contact-picker-btn { width: 100%; background: #E3F2FD; color: #1976D2; border: 1px solid #BBDEFB; padding: 12px; border-radius: 12px; font-weight: 700; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.95em; }
+        .info-box { font-size: 0.75em; color: #666; text-align: center; margin-bottom: 20px; line-height: 1.4; word-break: keep-all; background: #f8f9fa; padding: 10px; border-radius: 10px; border: 1px solid #eee; }
+
+        #inquiryMenu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 5px; }
+        .inquiry-menu-btn { background: #f8f9fa; border: 1px solid #e9ecef; padding: 20px 10px; border-radius: 16px; font-size: 1.05em; font-weight: 700; color: #333; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); transition: transform 0.1s, background 0.2s; }
+        .inquiry-menu-btn:active { background: #e9ecef; transform: scale(0.96); }
+        .inquiry-menu-icon { font-size: 1.8em; }
+        .inquiry-menu-desc { font-size: 0.75em; color: #777; font-weight: 500; }
+        
+        .list-menu-btn { width: 100%; text-align: left; background: #f8f9fa; border: 1px solid #e9ecef; padding: 16px; border-radius: 12px; font-size: 1.05em; font-weight: 600; color: #333; margin-bottom: 10px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: background 0.2s; }
+        .list-menu-btn:active { background: #e9ecef; }
+        .inquiry-back-btn { background: none; border: none; color: #1976D2; font-weight: 700; font-size: 1em; cursor: pointer; margin-bottom: 15px; padding: 0; display: flex; align-items: center; gap: 5px; }
+        .result-item { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+        .result-item-title { font-weight: 700; color: #2c3e50; font-size: 1.1em; margin-bottom: 5px; display: flex; justify-content: space-between; cursor: pointer; }
+        .result-item-detail { font-size: 0.9em; color: #666; background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 8px; display: none; line-height: 1.6; }
+        
+        .modal-profile-area { display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; }
+        .modal-student-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #56ab2f; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background-color: #f0f0f0; }
+        .upload-hint { font-size: 0.75em; color: #777; margin-top: 5px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.85em; color: #777; margin-bottom: 6px; font-weight: 500; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 10px; box-sizing: border-box; font-family: inherit; font-size: 1em; background: #fff; }
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-shrink: 0; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 1em; }
+        .btn-primary { background: #56ab2f; color: white; }
+        .btn-secondary { background: #e0e0e0; color: #555; }
+        .btn-danger { background: #ffebee; color: #c62828; width: 100%; margin-top: 10px; border: 1px solid #ffcdd2; }
+        
+        .custom-item-list { list-style: none; padding: 0; margin: 15px 0; max-height: 180px; overflow-y: auto; }
+        .custom-item-li { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: #f8f9fa; border-radius: 10px; margin-bottom: 8px; border: 1px solid #eee; }
+        .custom-item-del { background: none; border: none; color: #c62828; font-size: 1.2em; font-weight: bold; cursor: pointer; }
+        
+        /* 캘린더 스타일 */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; margin-bottom: 10px; }
+        .calendar-day-head { font-weight: 700; font-size: 0.85em; color: #aaa; padding: 5px 0; }
+        .calendar-day-head:first-child { color: #fc6076; }
+        .calendar-cell { position: relative; padding: 0; height: 45px; border-radius: 10px; cursor: pointer; font-size: 0.95em; font-weight: 500; color: #333; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+        .calendar-cell.selected { background: #56ab2f; color: white; font-weight: 700; box-shadow: 0 4px 8px rgba(86, 171, 47, 0.3); }
+
+        /* 메모노트 스타일 */
+        .memo-nav-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; justify-content: space-between; }
+        .memo-action-btn { background: #f0f0f0; border: none; padding: 6px 12px; border-radius: 8px; font-size: 0.85em; font-weight: 700; color: #444; cursor: pointer; transition: background 0.2s; }
+        .memo-action-btn:active { background: #e0e0e0; }
+        .memo-action-btn.primary { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; flex-grow: 1; }
+        .memo-editor { flex-grow: 1; min-height: 300px; outline: none; overflow-y: auto; font-size: 16px; line-height: 32px; color: #333; padding: 0 8px; background-image: repeating-linear-gradient(transparent, transparent 31px, #e0e0e0 31px, #e0e0e0 32px); background-attachment: local; }
+        .format-toolbar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.95); color: white; padding: 6px 15px; border-radius: 20px; display: flex; gap: 15px; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .format-toolbar.active { opacity: 1; pointer-events: auto; }
+        .format-toolbar button { background: none; border: none; color: white; font-size: 16px; cursor: pointer; padding: 2px 6px; font-family: inherit;}
+
+        /* 일정 팝업 아이템 스타일 */
+        .upcoming-item { display: flex; align-items: center; gap: 8px; font-size: 0.95em; color: #333; margin-bottom: 0; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .upcoming-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.8em; font-weight:700; flex-shrink: 0; }
+        .upcoming-badge.birth { background: #ffebee; color: #c62828; }
+        .upcoming-badge.event { background: #e3f2fd; color: #1565c0; }
+        .upcoming-empty { font-size: 0.9em; color: #999; text-align: center; padding: 20px 0; }
+
+        /* 🖨️ 인쇄용 (PDF) 스타일 */
+        @media screen { #printArea { display: none !important; } }
+        @media print {
+            body { background-color: white; margin: 0; padding: 0; display: block !important; }
+            #app-container, .modal { display: none !important; }
+            @page { size: A4; margin: 15mm; }
+            #printArea { display: block !important; width: 100%; color: black; font-family: 'Noto Sans KR', sans-serif; }
+            .print-title { text-align: center; font-size: 22pt; font-weight: bold; margin-bottom: 5px; }
+            .print-subtitle { text-align: center; font-size: 12pt; margin-bottom: 20px; color: #555; }
+            .print-table { width: 100%; border-collapse: collapse; font-size: 11pt; text-align: center; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 8px; }
+            .print-table th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; }
+            .print-table td { word-break: keep-all; }
+            .t-left { text-align: left !important; padding-left: 10px !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <input type="file" id="teacherProfileInput" style="display:none" accept="image/*" onchange="handleImageUpload(event, 'teacher')">
+    <input type="file" id="studentImageInput" style="display:none" accept="image/*" onchange="handleStudentImageUpload(event)">
+    <input type="file" id="backupFileInput" style="display:none" accept=".json,application/json,text/plain" onchange="handleRestoreData(event)">
+
+    <div class="header" id="mainHeader">
+        <div class="header-top">
+            <div class="title-area">
+                <h2>🌱 <span class="dept-title-span" id="schoolName" onclick="openDeptModal()">로딩중...</span> 출석부</h2>
+                <button class="memo-toggle-btn" onclick="openMemoModal()">📝 메모노트 작성</button>
+            </div>
+            <div class="teacher-profile">
+                <img id="teacherImg" class="teacher-img" src="" onclick="document.getElementById('teacherProfileInput').click()">
+                <div class="teacher-name editable" id="teacherName" contenteditable="true" data-placeholder="이름/직분"></div>
+            </div>
+        </div>
+
+        <div class="header-controls">
+            <div style="display: flex; gap: 10px; align-items: center; justify-content: center; width: 100%; margin-bottom: 5px;">
+                <div class="current-date-display" id="dateDisplay" onclick="openCalendar()">날짜 로딩중...</div>
+                <button class="notice-btn" onclick="openModalSafe('upcomingModal')">🔔 일정</button>
+            </div>
+            <div class="action-btns">
+                <button class="inquiry-btn" onclick="openInquiryModal()">🔍 조회</button>
+                <button class="sms-btn" onclick="openSmsModal()">💬 문자</button>
+                <button class="print-btn" onclick="openPrintModal()">🖨️ 인쇄</button>
+                <button class="backup-btn" onclick="openBackupModal()">💾 저장</button>
+            </div>
+        </div>
+        
+        <div class="class-info">
+            <span class="editable" id="deptName" contenteditable="true" data-placeholder="[무슨]"></span>부 
+            <span class="editable" id="gradeNum" contenteditable="true" data-placeholder="[몇]"></span>학년 
+            <span class="editable" id="classNum" contenteditable="true" data-placeholder="[몇]"></span>반
+        </div>
+    </div>
+
+    <div class="list-container">
+        <div class="summary-header">
+            <div class="attendance-summary" id="attendanceSummary">
+                <span style="color:#2e7d32;">참석: 0명</span> | <span style="color:#c62828;">결석: 0명</span>
+            </div>
+            <button class="setting-btn" onclick="openCustomCheckModal()">⚙️ 항목 설정</button>
+        </div>
+        <div id="studentList"></div>
+    </div>
+
+    <div class="footer-logo">Piltong AI ministry</div>
+    <button class="fab" onclick="openAddModal()">+</button>
+</div>
+
+<div id="printArea"></div>
+
+<datalist id="roleOptions"></datalist>
+
+<div class="modal" id="deptModal">
+    <div class="modal-content">
+        <div class="modal-title">🏢 출석부 변경 및 추가</div>
+        <div class="info-box">목록을 선택하면 해당 부서의 출석부로 전환됩니다.<br>새로 추가하면 백지상태의 빈 출석부가 열립니다.</div>
+        <div id="deptListArea" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;"></div>
+        <div style="border-top: 1px dashed #ccc; padding-top: 15px;">
+            <div class="input-group" style="display: flex; gap: 8px; margin-bottom: 0;">
+                <input type="text" id="newDeptInput" placeholder="새 부서/교회 이름 입력" style="flex: 1;">
+                <button class="btn btn-primary" style="flex: 0 0 70px; padding: 0;" onclick="addDept()">추가</button>
+            </div>
+        </div>
+        <div class="btn-row" style="margin-top:20px;"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('deptModal')">닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="upcomingModal">
+    <div class="modal-content">
+        <div class="modal-title">📢 다가오는 일정 및 생일</div>
+        <div class="info-box" style="margin-bottom:15px; color:#E65100; font-weight: bold; background:#fff3e0; border-color:#ffe0b2;">
+            오늘부터 앞으로 2주 내의 일정입니다.
+        </div>
+        <div id="upcomingModalList" style="max-height: 40vh; overflow-y: auto; margin-bottom: 15px; padding: 0 5px;"></div>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('upcomingModal')">확인 및 닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="calendarModal">
+    <div class="modal-content">
+        <div class="modal-title" id="calendarMonthTitle" style="margin-bottom: 5px;"></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="btn-row" style="margin-top: 10px;">
+            <button class="btn btn-secondary" style="width: 100%; font-size: 1.05em; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;" onclick="closeModalSafe('calendarModal')">✅ 선택한 날짜 출석부 보기</button>
+        </div>
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #eee;" id="eventAddSection">
+            <div style="font-weight: 700; color: #333; margin-bottom: 10px; font-size: 1.05em; display: flex; align-items: center; gap: 5px;">📅 행사 및 일정 추가</div>
+            <div class="info-box" style="margin-bottom: 10px; padding: 8px; text-align: left;">
+                💡 위 달력의 <strong>날짜를 터치</strong>하시면 아래 입력창의 날짜가 맞춰집니다.
+            </div>
+            <div class="input-group" style="display:flex; gap:8px; margin-bottom: 8px;">
+                <input type="date" id="newEventDate" style="flex:1; padding: 8px; font-size: 0.9em;">
+                <input type="time" id="newEventTime" style="flex:1; padding: 8px; font-size: 0.9em;">
+            </div>
+            <div class="input-group" style="margin-bottom: 10px;">
+                <input type="text" id="newEventTitle" placeholder="행사 내용 (예: 여름성경학교)" style="width:100%; padding: 8px; font-size: 0.95em; box-sizing:border-box;">
+            </div>
+            <button class="btn btn-primary" style="width:100%; padding:10px; margin-bottom: 15px;" onclick="addEvent()">+ 행사 추가하기</button>
+            <ul class="custom-item-list" id="eventListArea" style="max-height: 130px; overflow-y: auto; padding-right: 5px; margin:0;"></ul>
+        </div>
+        
+        <div class="btn-row" style="margin-top: 15px;">
+            <button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('calendarModal')">닫기</button>
+        </div>
+        
+    </div>
+</div>
+
+<div class="modal" id="backupModal">
+    <div class="modal-content">
+        <div class="modal-title">💾 데이터 백업 / 복원</div>
+        <div class="info-box" style="margin-bottom:15px;" id="backupModalInfo">
+            현재 부서의 모든 데이터를 기기에 파일로 저장하거나 불러옵니다.
+        </div>
+        <button class="list-menu-btn" onclick="exportData()" style="border-left: 4px solid #9C27B0; margin-bottom:12px;">⬇️ 내 기기에 백업 파일 저장하기</button>
+        <label for="backupFileInput" class="list-menu-btn" style="border-left: 4px solid #56ab2f; display: block; box-sizing: border-box; margin-bottom: 10px; cursor: pointer;">⬆️ 기존 백업 파일 불러오기</label>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('backupModal')">닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="memoModal">
+    <div class="modal-content" id="memoContentBox" style="display:flex; flex-direction:column; height: 80vh; position: relative;">
+        <div class="format-toolbar" id="formatToolbar">
+            <button onclick="formatText('bold')" style="font-weight:900;">B</button>
+            <button onclick="formatText('italic')" style="font-style:italic; font-family:serif;">I</button>
+            <button onclick="formatText('underline')" style="text-decoration:underline;">U</button>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div class="modal-title" style="margin:0;">📝 노트</div>
+            <button class="btn btn-secondary" id="memoCloseBtn" style="padding: 6px 12px; width:auto; border-radius:8px; position:relative; z-index:100;" onclick="closeMemoModal()">닫기</button>
+        </div>
+        <div class="memo-nav-btns" id="memoNavBtns">
+            <button class="memo-action-btn" onclick="createNewMemo()">새글 작성</button>
+            <button class="memo-action-btn" onclick="showMemoList()">목록 열기</button>
+            <button class="memo-action-btn primary" onclick="saveCurrentMemo()">디스크에 저장</button>
+        </div>
+        <div id="memoListArea" style="display:none; flex-grow:1; overflow-y:auto; border-top:1px solid #eee; padding-top:10px;"></div>
+        <div id="memoEditor" class="memo-editor" contenteditable="true" placeholder="이곳에 메모를 작성하세요..."></div>
+        <input type="hidden" id="currentMemoId">
+    </div>
+</div>
+
+<div class="modal" id="printModal">
+    <div class="modal-content">
+        <div class="modal-title">🖨️ 보고서 인쇄 (PDF)</div>
+        <div style="text-align: center; font-size: 0.85em; color: #777; margin-bottom: 20px;">
+            출력할 항목 선택 후 <strong>'PDF로 저장'</strong>을 누르세요.
+        </div>
+        <button class="list-menu-btn" onclick="executePrint('attendance')" style="border-left: 4px solid #E65100;">📄 연간 출결 내역 인쇄</button>
+        <button class="list-menu-btn" onclick="executePrint('profile')" style="border-left: 4px solid #1976D2;">📄 학생 신상 명부 인쇄</button>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('printModal')">닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="smsModal">
+    <div class="modal-content">
+        <div class="modal-title">💬 단체 문자 보내기</div>
+        <button class="list-menu-btn" onclick="sendSms('all')" style="border-left: 4px solid #1976D2;">👥 전체 학생에게 보내기</button>
+        <button class="list-menu-btn" onclick="sendSms('present')" style="border-left: 4px solid #2e7d32;">✅ 출석자에게 보내기</button>
+        <button class="list-menu-btn" onclick="sendSms('absent')" style="border-left: 4px solid #c62828;">❌ 결석자에게 보내기</button>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('smsModal')">닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="inquiryModal">
+    <div class="modal-content" style="display:flex; flex-direction:column; max-height:85vh;">
+        <div class="modal-title" id="inquiryTitle">📊 종합 통계 조회</div>
+        <div id="inquiryMenu">
+            <button class="inquiry-menu-btn" onclick="showNameInquiry()"><span class="inquiry-menu-icon">👤</span><span>이름 조회</span><span class="inquiry-menu-desc">연간 출결</span></button>
+            <button class="inquiry-menu-btn" onclick="showDateInquiry()"><span class="inquiry-menu-icon">📅</span><span>날짜 조회</span><span class="inquiry-menu-desc">특정 주일</span></button>
+            <button class="inquiry-menu-btn" onclick="showPerfectAttendance()"><span class="inquiry-menu-icon">🏆</span><span>개근 조회</span><span class="inquiry-menu-desc">올해 기준</span></button>
+            <button class="inquiry-menu-btn" onclick="showBirthdayInquiry()"><span class="inquiry-menu-icon">🎂</span><span>생일 조회</span><span class="inquiry-menu-desc">월별 생일자</span></button>
+            <button class="inquiry-menu-btn" onclick="showRoleInquiry()"><span class="inquiry-menu-icon">🏷️</span><span>직분 조회</span><span class="inquiry-menu-desc">직분별 출석</span></button>
+        </div>
+        <div id="inquiryResultArea" style="display:none; flex-grow:1; overflow-y:auto;">
+            <button class="inquiry-back-btn" onclick="backToInquiryMenu()">◀ 메뉴로 돌아가기</button>
+            <div id="inquiryContent"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('inquiryModal')">닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="customCheckModal">
+    <div class="modal-content">
+        <div class="modal-title">체크 항목 설정</div>
+        <div class="input-group" style="display: flex; gap: 8px;">
+            <input type="text" id="newCheckItemName" placeholder="새 항목 이름 (예: 요절)" style="flex: 1; margin:0;">
+            <button class="btn btn-primary" style="flex: 0 0 70px; padding: 0;" onclick="addCustomItem()">추가</button>
+        </div>
+        <ul class="custom-item-list" id="customItemList"></ul>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('customCheckModal')">완료 및 닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="roleSettingModal">
+    <div class="modal-content">
+        <div class="modal-title">🏷️ 직분 항목 설정</div>
+        <div class="input-group" style="display: flex; gap: 8px;">
+            <input type="text" id="newRoleItemName" placeholder="새 직분 (예: 청년)" style="flex: 1; margin:0;">
+            <button class="btn btn-primary" style="flex: 0 0 70px; padding: 0;" onclick="addRoleItem()">추가</button>
+        </div>
+        <ul class="custom-item-list" id="roleItemList"></ul>
+        <div class="btn-row"><button class="btn btn-secondary" style="width: 100%;" onclick="closeModalSafe('roleSettingModal')">완료 및 닫기</button></div>
+    </div>
+</div>
+
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <div class="modal-title">새 학생 등록</div>
+        <button class="contact-picker-btn" onclick="pickContact()">📞 내 폰 연락처에서 불러오기</button>
+        <div class="info-box">💡 <strong>안드로이드(갤럭시)</strong> 전용 기능입니다.<br>아이폰 사용자는 직접 입력해 주세요.</div>
+        <div class="modal-profile-area"><img id="addStudentImgPreview" class="modal-student-img" src="" onclick="triggerStudentImageUpload()"><div class="upload-hint">터치하여 사진 등록</div></div>
+        
+        <div class="input-group"><label>이름</label><input type="text" id="newName"></div>
+        
+        <div class="input-group">
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+                직분 <span onclick="openRoleSettingModal()" style="font-size:0.8em; color:#1976D2; cursor:pointer; font-weight:700;">⚙️ 항목 관리</span>
+            </label>
+            <select id="newRole"></select>
+        </div>
+        
+        <div class="input-group"><label>전도자(인도자)</label><input type="text" id="newEvangelizer" placeholder="전도한 사람 이름"></div>
+        <div class="input-group"><label>전화번호</label><input type="tel" id="newPhone"></div>
+        <div class="input-group"><label>생년월일</label><input type="date" id="newBirth"></div>
+        
+        <div class="btn-row"><button class="btn btn-primary" onclick="addStudent()">등록</button><button class="btn btn-secondary" onclick="closeModalSafe('addModal')">취소</button></div>
+    </div>
+</div>
+
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <div class="modal-title">학생 정보 수정</div>
+        <input type="hidden" id="editId">
+        <div class="modal-profile-area"><img id="editStudentImgPreview" class="modal-student-img" src="" onclick="triggerStudentImageUpload()"><div class="upload-hint">터치하여 사진 변경</div></div>
+        
+        <div class="input-group"><label>이름</label><input type="text" id="editName"></div>
+        
+        <div class="input-group">
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+                직분 <span onclick="openRoleSettingModal()" style="font-size:0.8em; color:#1976D2; cursor:pointer; font-weight:700;">⚙️ 항목 관리</span>
+            </label>
+            <select id="editRole"></select>
+        </div>
+        
+        <div class="input-group"><label>전도자(인도자)</label><input type="text" id="editEvangelizer" placeholder="전도한 사람 이름"></div>
+        <div class="input-group"><label>전화번호</label><input type="tel" id="editPhone"></div>
+        <div class="input-group"><label>생년월일</label><input type="date" id="editBirth"></div>
+        
+        <div class="btn-row"><button class="btn btn-primary" onclick="updateStudent()">수정</button><button class="btn btn-secondary" onclick="closeModalSafe('editModal')">닫기</button></div>
+        <button class="btn btn-danger" onclick="deleteStudent()">🗑 학생 정보 삭제</button>
+    </div>
+</div>
+
+<script>
+    // ----------------------------------------------------
+    // 1. 공통 무적 방어막 함수들 (어떤 환경에서도 안 멈춤)
+    // ----------------------------------------------------
+    const defaultProfileSVG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NjY2NjYyI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS43OS00IDQgMS43OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==";
+    
+    function safeSet(key, value) {
+        try { localStorage.setItem(key, value); } catch(e) { console.error("Storage Save Error"); }
+    }
+    
+    function safeGet(key) {
+        try { return localStorage.getItem(key); } catch(e) { return null; }
+    }
+    
+    function safeRemove(key) {
+        try { localStorage.removeItem(key); } catch(e) {}
+    }
+
+    function getSafeJSON(key, defaultValue) {
+        try {
+            const data = safeGet(key);
+            if (data && data !== 'undefined' && data !== 'null') { return JSON.parse(data); }
+        } catch (error) {}
+        return defaultValue;
+    }
+
+    // ----------------------------------------------------
+    // 2. 전역 변수 초기화
+    // ----------------------------------------------------
+    let currentDept = '주일학교';
+    let deptList = ['주일학교'];
+    let students = [];
+    let attendance = {};
+    let customItems = [];
+    let customData = {};
+    let events = [];
+    let savedMemos = [];
+    let currentSelectedDate = '';
+    let tempStudentImageData = '';
+    let calendarViewDate = new Date();
+    
+    let roleOptionsList = ['목사', '부목사', '전도사', '장로', '권사', '집사', '교사', '학생'];
+
+    function k(base) { 
+        return base + '_' + currentDept; 
+    }
+
+    // ----------------------------------------------------
+    // 3. 앱 초기화 (모든 데이터 로딩을 안전하게 처리)
+    // ----------------------------------------------------
+    function initApp() {
+        try {
+            // ▼▼ 추가된 부분: 브라우저에 영구 저장 권한 요청 (데이터 증발 방지) ▼▼
+            if (navigator.storage && navigator.storage.persist) {
+                navigator.storage.persist().then(function(granted) {
+                    if (granted) {
+                        console.log("영구 저장소가 활성화되었습니다. (스마트폰이 임의로 삭제하지 않음)");
+                    } else {
+                        console.log("영구 저장소 권한이 거부되었거나 지원하지 않습니다.");
+                    }
+                });
+            }
+            // ▲▲ 여기까지 ▲▲
+
+            const todayKST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)); 
+            currentSelectedDate = todayKST.toISOString().split('T')[0];
+
+            if (!safeGet('ss_multidept_migrated')) {
+                const oldToNew = {
+                    'ss_students_v4': 'students_주일학교',
+                    'ss_attendance_v4': 'attendance_주일학교',
+                    'ss_customItems_v5': 'customItems_주일학교',
+                    'ss_customData_v5': 'customData_주일학교',
+                    'ss_events_v1': 'events_주일학교',
+                    'ss_memo_list': 'memo_list_주일학교',
+                    'ss_last_active_memo': 'last_active_memo_주일학교',
+                    'ss_classInfo': 'classInfo_주일학교',
+                    'ss_profileImg': 'profileImg_주일학교'
+                };
+                for (let oldKey in oldToNew) {
+                    let val = safeGet(oldKey);
+                    if (val !== null) safeSet(oldToNew[oldKey], val);
+                }
+                safeSet('ss_dept_list', JSON.stringify(['주일학교']));
+                safeSet('ss_current_dept', '주일학교');
+                safeSet('ss_multidept_migrated', 'true');
+            }
+
+            currentDept = safeGet('ss_current_dept') || '주일학교';
+            deptList = getSafeJSON('ss_dept_list', ['주일학교']);
+
+            students = getSafeJSON(k('students'), []);
+            if (!Array.isArray(students)) students = [];
+            students = students.filter(s => s && typeof s === 'object' && s.id && s.name);
+
+            attendance = getSafeJSON(k('attendance'), {}); 
+            if (typeof attendance !== 'object' || attendance === null || Array.isArray(attendance)) attendance = {};
+
+            customItems = getSafeJSON(k('customItems'), []);
+            if (!Array.isArray(customItems)) customItems = [];
+
+            customData = getSafeJSON(k('customData'), {});
+            if (typeof customData !== 'object' || customData === null || Array.isArray(customData)) customData = {};
+
+            events = getSafeJSON(k('events'), []);
+            if (!Array.isArray(events)) events = [];
+
+            savedMemos = getSafeJSON(k('memo_list'), []);
+            if (!Array.isArray(savedMemos)) savedMemos = [];
+            
+            // 직분 리스트 로딩 및 렌더링 수정 적용
+            roleOptionsList = getSafeJSON(k('roleOptionsList'), ['목사', '부목사', '전도사', '장로', '권사', '집사', '교사', '학생']);
+            if (!Array.isArray(roleOptionsList)) roleOptionsList = ['목사', '부목사', '전도사', '장로', '권사', '집사', '교사', '학생'];
+            renderRoleSelects();
+
+            loadSavedData();
+            setMainDate(currentSelectedDate);
+            renderUpcoming();
+            
+            setTimeout(() => { openModalSafe('upcomingModal'); }, 300);
+
+        } catch(e) {
+            console.error("앱 초기화 중 오류가 발생했습니다:", e);
+        }
+    }
+
+    // ----------------------------------------------------
+    // 4. 모달 제어기
+    // ----------------------------------------------------
+    function openModalSafe(id) {
+        try {
+            const m = document.getElementById(id);
+            if(m) {
+                m.style.display = 'flex';
+                window.history.pushState({ modalId: id }, null, '#' + id);
+            }
+        } catch(e) {}
+    }
+
+    function closeModalSafe(id) {
+        try {
+            const m = document.getElementById(id);
+            if(m) {
+                m.style.display = 'none';
+                if (window.location.hash === '#' + id) {
+                    window.history.replaceState(null, null, window.location.pathname);
+                }
+            }
+        } catch(e) {}
+    }
+
+    window.addEventListener('popstate', function() {
+        document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        try {
+            const editor = document.getElementById('memoEditor');
+            if (editor) safeSet(k('last_active_memo'), editor.innerHTML);
+        } catch(e) {}
+        renderUpcoming();
+    });
+
+    // ----------------------------------------------------
+    // 5. 다중 부서 관리 
+    // ----------------------------------------------------
+    function openDeptModal() {
+        renderDeptList();
+        openModalSafe('deptModal');
+    }
+
+    function renderDeptList() {
+        const listArea = document.getElementById('deptListArea');
+        if(!listArea) return;
+        let html = '';
+        deptList.forEach(dept => {
+            const isCurrent = (dept === currentDept);
+            const bgColor = isCurrent ? '#f1f8e9' : '#fff';
+            const borderColor = isCurrent ? '#56ab2f' : '#ddd';
+            const fontWeight = isCurrent ? '700' : '500';
+            const textColor = isCurrent ? '#2e7d32' : '#333';
+            const checkMark = isCurrent ? '✅ ' : '';
+            
+            let deleteBtnHtml = '';
+            if (!isCurrent && deptList.length > 1) {
+                deleteBtnHtml = '<button onclick="deleteDept(\'' + dept + '\')" style="background:none; border:none; color:#c62828; font-weight:bold; font-size:1.1em; cursor:pointer;">✕</button>';
+            }
+
+            html += '<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid ' + borderColor + '; margin-bottom:8px; border-radius:10px; background:' + bgColor + ';">' +
+                        '<div style="flex:1; cursor:pointer; font-weight:' + fontWeight + '; color:' + textColor + ';" onclick="selectDept(\'' + dept + '\')">' +
+                            checkMark + dept + ' 출석부' +
+                        '</div>' + deleteBtnHtml +
+                    '</div>';
+        });
+        listArea.innerHTML = html;
+    }
+
+    function selectDept(dept) {
+        safeSet('ss_current_dept', dept);
+        location.reload(); 
+    }
+
+    function addDept() {
+        const newDept = document.getElementById('newDeptInput').value.trim();
+        if(!newDept) return alert('이름을 입력해주세요.');
+        if(deptList.includes(newDept)) return alert('이미 존재하는 이름입니다.');
+        
+        deptList.push(newDept);
+        safeSet('ss_dept_list', JSON.stringify(deptList));
+        selectDept(newDept); 
+    }
+
+    function deleteDept(dept) {
+        if(confirm(`'${dept} 출석부'와 기록된 모든 데이터를 정말 삭제하시겠습니까?\n(삭제 후 복구 불가)`)) {
+            deptList = deptList.filter(d => d !== dept);
+            safeSet('ss_dept_list', JSON.stringify(deptList));
+            
+            safeRemove('students_' + dept);
+            safeRemove('attendance_' + dept);
+            safeRemove('events_' + dept);
+            safeRemove('customItems_' + dept);
+            safeRemove('customData_' + dept);
+            safeRemove('memo_list_' + dept);
+            safeRemove('last_active_memo_' + dept);
+            safeRemove('classInfo_' + dept);
+            safeRemove('profileImg_' + dept);
+            safeRemove('roleOptionsList_' + dept);
+            
+            renderDeptList();
+        }
+    }
+
+    // ----------------------------------------------------
+    // 6. 메인 화면 및 캘린더 제어
+    // ----------------------------------------------------
+    function setMainDate(dateStr) {
+        currentSelectedDate = dateStr;
+        const parts = dateStr.split('-');
+        const dObj = new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
+        const week = ['일', '월', '화', '수', '목', '금', '토'];
+
+        const dayElem = document.getElementById('dateDisplay');
+        if(dayElem) dayElem.innerText = `${dateStr} (${week[dObj.getDay()]})`;
+        renderList(); 
+    }
+
+    function openCalendar() {
+        const parts = currentSelectedDate.split('-');
+        calendarViewDate = new Date(parts[0], parseInt(parts[1]) - 1, 1);
+        
+        const eDateInput = document.getElementById('newEventDate');
+        if(eDateInput) eDateInput.value = currentSelectedDate;
+        
+        const eTimeInput = document.getElementById('newEventTime');
+        if(eTimeInput) eTimeInput.value = '';
+
+        openModalSafe('calendarModal');
+        renderCalendar();
+        renderEventList();
+    }
+
+    function changeCalendarMonth(offset) {
+        calendarViewDate.setMonth(calendarViewDate.getMonth() + offset);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid'); 
+        if(!grid) return;
+        grid.innerHTML = '';
+        ['일', '월', '화', '수', '목', '금', '토'].forEach(d => grid.innerHTML += `<div class="calendar-day-head">${d}</div>`);
+        
+        const titleElem = document.getElementById('calendarMonthTitle');
+        if(titleElem) {
+            titleElem.innerHTML = 
+                '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+                    '<button onclick="changeCalendarMonth(-1)" style="background:none; border:none; font-size:1.2em; cursor:pointer; color:#56ab2f; padding:0 10px;">◀</button>' +
+                    '<span>' + calendarViewDate.getFullYear() + '년 ' + (calendarViewDate.getMonth() + 1) + '월</span>' +
+                    '<button onclick="changeCalendarMonth(1)" style="background:none; border:none; font-size:1.2em; cursor:pointer; color:#56ab2f; padding:0 10px;">▶</button>' +
+                '</div>';
+        }
+        
+        const start = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth(), 1); 
+        const last = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 0);
+        
+        for (let i = 0; i < start.getDay(); i++) grid.innerHTML += '<div></div>';
+        
+        for (let d = 1; d <= last.getDate(); d++) {
+            const dateStr = `${calendarViewDate.getFullYear()}-${String(calendarViewDate.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const isSelected = (dateStr === currentSelectedDate) ? 'selected' : '';
+            grid.innerHTML += `<div class="calendar-cell ${isSelected}" onclick="handleDateClick('${dateStr}')">${d}</div>`;
+        }
+    }
+
+    function handleDateClick(dateStr) {
+        currentSelectedDate = dateStr; 
+        const eDateInput = document.getElementById('newEventDate');
+        if(eDateInput) eDateInput.value = dateStr;
+        setMainDate(dateStr);
+        renderCalendar();
+    }
+
+    // ----------------------------------------------------
+    // 7. 일반 버튼 래퍼
+    // ----------------------------------------------------
+    function openSmsModal() { openModalSafe('smsModal'); }
+    function openPrintModal() {
+        if(students.length === 0) return alert('등록된 학생이 없습니다.');
+        openModalSafe('printModal');
+    }
+    function openBackupModal() {
+        const i = document.getElementById('backupModalInfo');
+        if(i) i.innerHTML = `<strong style="color:#6A1B9A;">현재 열려있는 '${currentDept}' 출석부</strong>의<br>모든 데이터를 기기에 파일로 저장합니다.`;
+        openModalSafe('backupModal'); 
+    }
+    function openCustomCheckModal() { renderCustomItemList(); openModalSafe('customCheckModal'); }
+    
+    function openAddModal() {
+        tempStudentImageData = '';
+        const prev = document.getElementById('addStudentImgPreview');
+        if(prev) prev.src = defaultProfileSVG;
+        const nn = document.getElementById('newName'); if(nn) nn.value = '';
+        const np = document.getElementById('newPhone'); if(np) np.value = '';
+        const nb = document.getElementById('newBirth'); if(nb) nb.value = '';
+        
+        const nr = document.getElementById('newRole'); 
+        if(nr) {
+            nr.value = roleOptionsList.includes('학생') ? '학생' : (roleOptionsList[0] || '');
+        }
+        
+        const ne = document.getElementById('newEvangelizer'); if(ne) ne.value = '';
+        openModalSafe('addModal');
+    }
+
+    // ----------------------------------------------------
+    // 8. 생일 & 행사
+    // ----------------------------------------------------
+    function getUpcomingItems() {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const twoWeeksLater = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const upcoming = [];
+
+        for (let i = 0; i <= 14; i++) {
+            const tDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+            const tMM = String(tDate.getMonth() + 1).padStart(2, '0');
+            const tDD = String(tDate.getDate()).padStart(2, '0');
+            const targetStr = `${tMM}-${tDD}`; 
+            
+            students.forEach(s => {
+                if(s.birth && s.birth.length >= 5) {
+                    const bStr = s.birth.substring(5); 
+                    if(bStr === targetStr) {
+                        upcoming.push({ dateObj: tDate, text: `${s.name} (${tMM}/${tDD})`, type: 'birth' });
+                    }
+                }
+            });
+        }
+
+        events.forEach(e => {
+            if(!e.date) return;
+            const parts = e.date.split('-');
+            const eDate = new Date(parts[0], parseInt(parts[1])-1, parts[2]);
+            if(eDate >= today && eDate <= twoWeeksLater) {
+                const tMM = String(eDate.getMonth() + 1).padStart(2, '0');
+                const tDD = String(eDate.getDate()).padStart(2, '0');
+                const timeStr = e.time ? ` ${e.time}` : '';
+                upcoming.push({ dateObj: eDate, text: `${e.title} (${tMM}/${tDD}${timeStr})`, type: 'event' });
+            }
+        });
+
+        upcoming.sort((a, b) => a.dateObj - b.dateObj);
+        return upcoming;
+    }
+
+    function renderUpcoming() {
+        const listDiv = document.getElementById('upcomingModalList');
+        if(!listDiv) return;
+        
+        const items = getUpcomingItems();
+        listDiv.innerHTML = '';
+        
+        if(items.length === 0) {
+            listDiv.innerHTML = '<div class="upcoming-empty">다가오는 일정이나 생일이 없습니다.</div>';
+            return;
+        }
+
+        items.forEach(item => {
+            if(item.type === 'birth') {
+                listDiv.innerHTML += `<div class="upcoming-item"><span class="upcoming-badge birth">🎂 생일</span> <span style="font-weight:500;">${item.text}</span></div>`;
+            } else {
+                listDiv.innerHTML += `<div class="upcoming-item"><span class="upcoming-badge event">🎉 행사</span> <span style="font-weight:500;">${item.text}</span></div>`;
+            }
+        });
+    }
+
+    function renderEventList() {
+        const listArea = document.getElementById('eventListArea');
+        if(!listArea) return;
+        listArea.innerHTML = '';
+        
+        if(events.length === 0) {
+            listArea.innerHTML = '<li style="text-align:center; color:#999; padding:10px;">등록된 행사가 없습니다.</li>';
+            return;
+        }
+
+        const sortedEvents = [...events].sort((a,b) => new Date(a.date) - new Date(b.date));
+        sortedEvents.forEach(e => {
+            const dParts = e.date.split('-');
+            const timeStr = e.time ? ` ${e.time}` : '';
+            const dText = `${dParts[1]}/${dParts[2]}${timeStr}`;
+            listArea.innerHTML += `
+                <li class="custom-item-li">
+                    <span style="font-size:0.9em; color:#444;"><strong>${dText}</strong> : ${e.title}</span>
+                    <button class="custom-item-del" onclick="deleteEvent('${e.id}')">✕</button>
+                </li>
+            `;
+        });
+    }
+
+    function addEvent() {
+        const dateVal = document.getElementById('newEventDate').value;
+        const timeVal = document.getElementById('newEventTime').value;
+        const titleVal = document.getElementById('newEventTitle').value.trim();
+        if(!dateVal || !titleVal) return alert('날짜와 행사 내용을 모두 입력해주세요.');
+        
+        events.push({ id: Date.now().toString(), date: dateVal, time: timeVal, title: titleVal });
+        safeSet(k('events'), JSON.stringify(events));
+        
+        document.getElementById('newEventTitle').value = '';
+        document.getElementById('newEventTime').value = '';
+        renderEventList();
+        renderUpcoming();
+    }
+
+    function deleteEvent(id) {
+        if(confirm('이 행사를 삭제하시겠습니까?')) {
+            events = events.filter(e => e.id !== id);
+            safeSet(k('events'), JSON.stringify(events));
+            renderEventList();
+            renderUpcoming();
+        }
+    }
+
+    // ----------------------------------------------------
+    // 9. 📝 메모노트 로직
+    // ----------------------------------------------------
+    const mEditor = document.getElementById('memoEditor');
+    if(mEditor) {
+        mEditor.addEventListener('input', function() {
+            safeSet(k('last_active_memo'), this.innerHTML);
+        });
+    }
+
+    document.addEventListener('selectionchange', () => {
+        const selection = window.getSelection();
+        const toolbar = document.getElementById('formatToolbar');
+        const editor = document.getElementById('memoEditor');
+        
+        if (toolbar && editor && document.getElementById('memoModal').style.display === 'flex' && 
+            selection.rangeCount > 0 && !selection.isCollapsed && editor.contains(selection.anchorNode)) {
+            toolbar.classList.add('active');
+        } else if(toolbar) { 
+            toolbar.classList.remove('active'); 
+        }
+    });
+
+    function formatText(command) {
+        document.execCommand(command, false, null);
+        const editor = document.getElementById('memoEditor');
+        if(editor) editor.focus();
+    }
+
+    function openMemoModal() {
+        try {
+            const la = document.getElementById('memoListArea'); if(la) la.style.display = 'none';
+            const ed = document.getElementById('memoEditor');
+            if(ed) {
+                ed.style.display = 'block';
+                ed.innerHTML = safeGet(k('last_active_memo')) || '';
+            }
+        } catch(e){}
+        openModalSafe('memoModal');
+    }
+
+    function closeMemoModal() {
+        try {
+            const editor = document.getElementById('memoEditor');
+            if(editor) safeSet(k('last_active_memo'), editor.innerHTML);
+        } catch(e) {}
+        closeModalSafe('memoModal');
+    }
+
+    function createNewMemo() {
+        const cmId = document.getElementById('currentMemoId'); if(cmId) cmId.value = '';
+        const ed = document.getElementById('memoEditor'); if(ed) ed.innerHTML = '';
+        safeSet(k('last_active_memo'), '');
+        
+        const la = document.getElementById('memoListArea'); if(la) la.style.display = 'none';
+        if(ed) { ed.style.display = 'block'; ed.focus(); }
+    }
+
+    function saveCurrentMemo() {
+        const ed = document.getElementById('memoEditor');
+        if(!ed) return;
+        const content = ed.innerHTML;
+        const plainText = ed.innerText.trim();
+        if(!plainText) return alert('저장할 내용이 없습니다.');
+
+        const firstLine = plainText.split('\n')[0].trim();
+        const firstThreeWords = firstLine.split(/\s+/).slice(0, 3).join(' ') || '제목없음';
+        
+        const now = new Date();
+        const yy = String(now.getFullYear()).slice(-2);
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${yy}${mm}${dd}`; 
+        const displayDate = now.toLocaleString();
+
+        const title = `edu-note-${dateStr}-${firstThreeWords}`;
+        let currentId = document.getElementById('currentMemoId').value;
+
+        if (!currentId) {
+            currentId = Date.now().toString();
+            savedMemos.push({ id: currentId, title: title, content: content, date: displayDate });
+            document.getElementById('currentMemoId').value = currentId;
+        } else {
+            const idx = savedMemos.findIndex(m => m.id === currentId);
+            if(idx > -1) { 
+                savedMemos[idx].title = title; savedMemos[idx].content = content; savedMemos[idx].date = displayDate; 
+            } else { 
+                savedMemos.push({ id: currentId, title: title, content: content, date: displayDate }); 
+            }
+        }
+        
+        safeSet(k('memo_list'), JSON.stringify(savedMemos));
+        safeSet(k('last_active_memo'), content);
+        alert(`'${title}'\n메모가 안전하게 저장되었습니다.`);
+    }
+
+    function showMemoList() {
+        const listArea = document.getElementById('memoListArea');
+        const editor = document.getElementById('memoEditor');
+        if(!listArea || !editor) return;
+        
+        if (listArea.style.display === 'block') { 
+            listArea.style.display = 'none'; editor.style.display = 'block'; return; 
+        }
+
+        editor.style.display = 'none'; listArea.style.display = 'block'; listArea.innerHTML = '';
+        if(savedMemos.length === 0) {
+            listArea.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">저장된 메모가 없습니다.</div>';
+            return;
+        }
+
+        savedMemos.slice().reverse().forEach(m => {
+            listArea.innerHTML += `
+                <div style="padding:15px; border-bottom:1px solid #e0e0e0; cursor:pointer;" onclick="loadMemo('${m.id}')">
+                    <div style="font-weight:bold; color:#2c3e50; font-size:1.05em; margin-bottom:4px;">${m.title}</div>
+                    <div style="font-size:0.8em; color:#888;">${m.date}</div>
+                </div>
+            `;
+        });
+    }
+
+    function loadMemo(id) {
+        const m = savedMemos.find(x => x.id === id);
+        if(m) {
+            const cm = document.getElementById('currentMemoId'); if(cm) cm.value = m.id;
+            const ed = document.getElementById('memoEditor'); 
+            if(ed) {
+                ed.innerHTML = m.content;
+                safeSet(k('last_active_memo'), m.content);
+                ed.style.display = 'block';
+            }
+            const la = document.getElementById('memoListArea'); if(la) la.style.display = 'none';
+        }
+    }
+
+    // ----------------------------------------------------
+    // 10. 💾 백업 및 복원
+    // ----------------------------------------------------
+    function exportData() {
+        try {
+            const appData = {
+                students: safeGet(k('students')),
+                attendance: safeGet(k('attendance')),
+                customItems: safeGet(k('customItems')),
+                customData: safeGet(k('customData')),
+                classInfo: safeGet(k('classInfo')),
+                profileImg: safeGet(k('profileImg')),
+                memo_list: safeGet(k('memo_list')),
+                last_active_memo: safeGet(k('last_active_memo')),
+                events: safeGet(k('events')),
+                roleOptionsList: safeGet(k('roleOptionsList')) // 직분 데이터 추가
+            };
+            const jsonString = JSON.stringify(appData);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            const now = new Date();
+            const yy = String(now.getFullYear()).slice(-2);
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            
+            const schoolElem = document.getElementById('schoolName');
+            const schoolName = (schoolElem && schoolElem.innerText.trim() !== '') ? schoolElem.innerText.trim() : '주일학교';
+            
+            a.href = url;
+            a.download = `출석부-${schoolName}-${yy}${mm}${dd}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            closeModalSafe('backupModal');
+        } catch(e) { alert("다운로드에 실패했습니다."); }
+    }
+
+    function handleRestoreData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        event.target.value = '';
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                if (!confirm(`🚨 백업 데이터를 불러오면 현재의 모든 데이터가 사라지고 파일의 데이터로 교체됩니다. 진행하시겠습니까?`)) return;
+
+                const keys = ['students', 'attendance', 'customItems', 'customData', 'classInfo', 'profileImg', 'memo_list', 'last_active_memo', 'events', 'roleOptionsList'];
+                
+                keys.forEach(key => safeRemove(k(key)));
+
+                keys.forEach(key => {
+                    const keyWithDept = key + "_" + currentDept;
+                    
+                    if (importedData[keyWithDept] !== undefined) {
+                        safeSet(k(key), importedData[keyWithDept]);
+                    } 
+                    else if (importedData[key] !== undefined) {
+                        safeSet(k(key), importedData[key]);
+                    }
+                });
+
+                alert('✅ 데이터 복원이 완료되었습니다. 새로고침합니다.');
+                location.reload(); 
+            } catch (err) {
+                console.error(err);
+                alert('파일을 읽는 중 오류가 발생했습니다. 파일이 손상되었거나 형식이 올바르지 않습니다.');
+            }
+        };
+        reader.readAsText(file);
+    } 
+    
+    // ----------------------------------------------------
+    // 11. 출석 리스트 관리
+    // ----------------------------------------------------
+    function renderList() {
+        const listDiv = document.getElementById('studentList'); 
+        if(!listDiv) return;
+        listDiv.innerHTML = '';
+        
+        const dayData = attendance[currentSelectedDate] || {}; 
+        const cDayData = customData[currentSelectedDate] || {};
+        let pCount = 0; let aCount = 0;
+        
+        if (students.length === 0) {
+            listDiv.innerHTML = '<div style="text-align:center; padding:40px 0; color:#999; line-height:1.6;">우측 하단의 <strong style="color:#ff9a44;">+ 버튼</strong>을 눌러<br>학생을 추가해주세요.</div>';
+        }
+
+        students.sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ko')).forEach((s) => {
+            const st = dayData[s.id];
+            const isP = (st === true || st === 'present');
+            const isA = (st === false || st === 'absent');
+            
+            if (isP) pCount++; 
+            if (isA) aCount++;
+            
+            let imgSrc = s.image; if (!imgSrc || imgSrc === 'null' || imgSrc === 'undefined' || imgSrc === '') imgSrc = defaultProfileSVG;
+            
+            let checksHTML = `
+                <label class="check-item">
+                    <span class="check-item-name">출석</span>
+                    <input type="checkbox" ${isP ? 'checked' : ''} onchange="toggleAttendance('${s.id}', 'present')">
+                </label>
+                <label class="check-item absent">
+                    <span class="check-item-name" style="color:#c62828;">결석</span>
+                    <input type="checkbox" ${isA ? 'checked' : ''} onchange="toggleAttendance('${s.id}', 'absent')">
+                </label>
+            `;
+            
+            customItems.forEach(item => { 
+                const isC = (cDayData[s.id] || {})[item] || false; 
+                const safeItem = String(item).replace(/'/g, "\\'");
+                checksHTML += `
+                    <label class="check-item">
+                        <span class="check-item-name">${String(item)}</span>
+                        <input type="checkbox" ${isC ? 'checked' : ''} onchange="toggleCustomCheck('${s.id}', '${safeItem}')">
+                    </label>
+                `; 
+            });
+            
+            const roleBadgeHTML = s.role ? `<span class="student-role-badge">${s.role}</span>` : `<span class="student-role-badge">학생</span>`;
+            
+            listDiv.innerHTML += `
+                <div class="student-card">
+                    <div class="student-info">
+                        <img src="${imgSrc}" class="list-student-img">
+                        <div class="student-text-info">
+                            <span class="student-name" onclick="openEditModal('${s.id}')">${s.name} ${roleBadgeHTML}</span>
+                        </div>
+                    </div>
+                    <div class="check-group">${checksHTML}</div>
+                </div>`;
+        });
+        
+        const sumElem = document.getElementById('attendanceSummary');
+        if(sumElem) sumElem.innerHTML = `<span style="color:#2e7d32;">참석: ${pCount}명</span> | <span style="color:#c62828;">결석: ${aCount}명</span>`;
+    }
+
+    function toggleAttendance(id, type) {
+        if (!attendance[currentSelectedDate]) attendance[currentSelectedDate] = {};
+        let current = attendance[currentSelectedDate][id];
+        if (current === true) current = 'present';
+        if (current === false) current = 'absent';
+        
+        if (current === type) { delete attendance[currentSelectedDate][id]; } 
+        else { attendance[currentSelectedDate][id] = type; }
+        
+        safeSet(k('attendance'), JSON.stringify(attendance)); renderList();
+    }
+
+
+    // ----------------------------------------------------
+    // 12. 🖨️ 인쇄
+    // ----------------------------------------------------
+    function executePrint(type) {
+        document.getElementById('printModal').style.display = 'none';
+        if (window.location.hash === '#printModal') {
+            window.history.replaceState(null, null, window.location.pathname);
+        }
+        
+        const sElem = document.getElementById('schoolName');
+        const school = sElem ? sElem.innerText : '주일학교';
+        const dept = document.getElementById('deptName').innerText || '';
+        const grade = document.getElementById('gradeNum').innerText || '';
+        const cls = document.getElementById('classNum').innerText || '';
+        const teacher = document.getElementById('teacherName').innerText || '';
+        const classTitle = `${currentDept} ${dept}부 ${grade}학년 ${cls}반`;
+        
+        const printArea = document.getElementById('printArea');
+        if(!printArea) return;
+
+        const sortedStudents = [...students].sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+        const todayStr = new Date().toLocaleDateString();
+
+        let html = '';
+        if (type === 'attendance') {
+            const currentYear = new Date().getFullYear().toString();
+            const recordedDates = Object.keys(attendance).filter(date => date.startsWith(currentYear));
+            const totalWeeks = recordedDates.length;
+
+            html = `<div class="print-title">${classTitle} 출결 내역</div><div class="print-subtitle">${currentYear}년 전체 예배일수: ${totalWeeks}주 | 담당교사: ${teacher} | 인쇄일: ${todayStr}</div><table class="print-table"><thead><tr><th style="width:10%;">연번</th><th style="width:15%;">직분</th><th>이름</th><th>출석</th><th>결석</th><th>출석률</th></tr></thead><tbody>`;
+            sortedStudents.forEach((s, idx) => {
+                let pCount = 0; let aCount = 0;
+                recordedDates.forEach(date => { 
+                    const st = attendance[date][s.id];
+                    if(st === true || st === 'present') pCount++; 
+                    if(st === false || st === 'absent') aCount++;
+                });
+                const total = pCount + aCount;
+                const rate = total === 0 ? 0 : Math.round((pCount / total) * 100);
+                html += `<tr><td>${idx + 1}</td><td>${s.role || '학생'}</td><td class="t-left" style="font-weight:bold;">${s.name}</td><td>${pCount}</td><td>${aCount}</td><td>${rate}%</td></tr>`;
+            });
+            html += `</tbody></table><p style="text-align:right; font-size:10pt; color:#555; margin-top:30px;">Piltong AI ministry</p>`;
+        } else if (type === 'profile') {
+            html = `<div class="print-title">${classTitle} 신상 명부</div><div class="print-subtitle">총 인원: ${sortedStudents.length}명 | 담당교사: ${teacher} | 인쇄일: ${todayStr}</div><table class="print-table"><thead><tr><th style="width:8%;">연번</th><th style="width:12%;">직분</th><th style="width:15%;">이름</th><th style="width:30%;">전화번호</th><th style="width:20%;">생년월일</th><th style="width:15%;">전도자</th></tr></thead><tbody>`;
+            sortedStudents.forEach((s, idx) => { html += `<tr><td>${idx + 1}</td><td>${s.role || '학생'}</td><td class="t-left" style="font-weight:bold;">${s.name}</td><td>${s.phone || '-'}</td><td>${s.birth || '-'}</td><td>${s.evangelizer || '-'}</td></tr>`; });
+            html += `</tbody></table><p style="text-align:right; font-size:10pt; color:#555; margin-top:30px;">Piltong AI ministry</p>`;
+        }
+        printArea.innerHTML = html;
+        
+        setTimeout(() => { try { window.print(); } catch(e){} }, 300);
+    }
+
+    // ----------------------------------------------------
+    // 13. 📞 문자
+    // ----------------------------------------------------
+    async function pickContact() {
+        if (!('contacts' in navigator && 'ContactsManager' in window)) return alert("아이폰(iOS) 또는 미지원 환경입니다. 직접 입력해주세요.");
+        try {
+            const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+            if (contacts.length > 0) {
+                const nn = document.getElementById('newName'); if(nn && contacts[0].name) nn.value = contacts[0].name[0];
+                const np = document.getElementById('newPhone'); if(np && contacts[0].tel) np.value = contacts[0].tel[0]; 
+            }
+        } catch (err) {}
+    }
+
+    function sendSms(type) {
+        const dayData = attendance[currentSelectedDate] || {}; 
+        let targetPhones = [];
+        
+        students.forEach(s => {
+            if (!s.phone) return; 
+            const st = dayData[s.id];
+            const isP = (st === true || st === 'present');
+            const isA = (st === false || st === 'absent');
+            
+            if (type === 'all') targetPhones.push(s.phone); 
+            else if (type === 'present' && isP) targetPhones.push(s.phone); 
+            else if (type === 'absent' && isA) targetPhones.push(s.phone);
+        });
+        
+        if (targetPhones.length === 0) return alert('해당 조건에 연락처가 등록된 학생이 없습니다.');
+        
+        if(confirm(`총 ${targetPhones.length}명에게 문자를 보냅니다.`)) { 
+            closeModalSafe('smsModal');
+            window.location.href = `sms:${targetPhones.join(',')}`; 
+        }
+    }
+
+    // ----------------------------------------------------
+    // 14. 📊 종합 조회(통계) - 향상된 직분별 조회
+    // ----------------------------------------------------
+    function openInquiryModal() { backToInquiryMenu(); openModalSafe('inquiryModal'); }
+    function backToInquiryMenu() { 
+        const m = document.getElementById('inquiryMenu'); if(m) m.style.display = 'grid'; 
+        const a = document.getElementById('inquiryResultArea'); if(a) a.style.display = 'none'; 
+        const t = document.getElementById('inquiryTitle'); if(t) t.innerText = '📊 종합 통계 조회'; 
+    }
+    function showResultArea(title, htmlContent) { 
+        const m = document.getElementById('inquiryMenu'); if(m) m.style.display = 'none'; 
+        const a = document.getElementById('inquiryResultArea'); if(a) a.style.display = 'block'; 
+        const t = document.getElementById('inquiryTitle'); if(t) t.innerText = title; 
+        const c = document.getElementById('inquiryContent'); if(c) c.innerHTML = htmlContent; 
+    }
+
+    function showNameInquiry() {
+        if(students.length===0) return alert('학생이 없습니다.');
+        const currentYear = new Date().getFullYear().toString();
+        const recordedDates = Object.keys(attendance).filter(date => date.startsWith(currentYear)); 
+        const sortedStudents = [...students].sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+        
+        let html = `<div style="font-size:0.85em; color:#666; margin-bottom:15px;">기록된 총 예배: <strong>${recordedDates.length}주</strong></div>`;
+        sortedStudents.forEach(s => {
+            let pCount = 0; let aCount = 0;
+            recordedDates.forEach(date => { 
+                const st = attendance[date][s.id];
+                if(st === true || st === 'present') pCount++; 
+                if(st === false || st === 'absent') aCount++;
+            });
+            const total = pCount + aCount;
+            const rate = total === 0 ? 0 : Math.round((pCount / total) * 100);
+            html += `<div class="result-item"><div class="result-item-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'"><span>${s.name} <span style="font-size:0.7em; color:#777;">(${s.role || '학생'})</span></span><span style="font-size:0.85em; color:#1976D2;">▼</span></div><div class="result-item-detail" style="line-height:1.6;">출석: <strong style="color:#2e7d32;">${pCount}주</strong> / 결석: <strong style="color:#c62828;">${aCount}주</strong><br>출석률: <strong>${rate}%</strong></div></div>`;
+        });
+        showResultArea('👤 연간 출결 현황', html);
+    }
+
+    function showDateInquiry() {
+        let html = `<div style="text-align:center; margin-bottom:20px;"><input type="date" id="inquiryDateSelect" value="${currentSelectedDate}" style="padding:10px; border:1px solid #ccc; border-radius:8px; width:100%; box-sizing:border-box; margin-bottom:10px;"><button class="btn btn-primary" style="width:100%;" onclick="executeDateInquiry()">조회하기</button></div><div id="dateInquiryResult"></div>`;
+        showResultArea('📅 날짜별 조회', html);
+        setTimeout(executeDateInquiry, 100);
+    }
+    
+    function executeDateInquiry() {
+        const dateInput = document.getElementById('inquiryDateSelect');
+        const dateStr = dateInput ? dateInput.value : ''; 
+        if(!dateStr) return;
+        
+        const dayData = attendance[dateStr] || {}; 
+        const pNames = []; const aNames = [];
+        
+        students.forEach(s => { 
+            const st = dayData[s.id];
+            if(st === true || st === 'present') pNames.push(s.name); 
+            else if(st === false || st === 'absent') aNames.push(s.name); 
+        });
+        
+        const resHtml = `<div style="background:#e8f5e9; padding:15px; border-radius:10px; margin-bottom:10px;"><div style="font-weight:bold; color:#2e7d32;">✅ 출석 (${pNames.length}명)</div><div>${pNames.length>0 ? pNames.join(', ') : '없음'}</div></div><div style="background:#ffebee; padding:15px; border-radius:10px;"><div style="font-weight:bold; color:#c62828;">❌ 결석 (${aNames.length}명)</div><div>${aNames.length>0 ? aNames.join(', ') : '없음'}</div></div>`;
+        const resElem = document.getElementById('dateInquiryResult');
+        if(resElem) resElem.innerHTML = resHtml;
+    }
+
+    function showRoleInquiry() {
+        let html = `<div style="text-align:center; margin-bottom:20px;">
+                        <input type="date" id="inquiryRoleDateSelect" value="${currentSelectedDate}" style="padding:10px; border:1px solid #ccc; border-radius:8px; width:100%; box-sizing:border-box; margin-bottom:10px;">
+                        <button class="btn btn-primary" style="width:100%;" onclick="executeRoleInquiry()">조회하기</button>
+                    </div>
+                    <div id="roleInquiryResult"></div>`;
+        showResultArea('🏷️ 직분별 출석 조회', html);
+        setTimeout(executeRoleInquiry, 100);
+    }
+
+    function executeRoleInquiry() {
+        const dateInput = document.getElementById('inquiryRoleDateSelect');
+        const dateStr = dateInput ? dateInput.value : ''; 
+        if(!dateStr) return;
+        
+        const dayData = attendance[dateStr] || {}; 
+        
+        const roleGroups = {}; 
+        roleOptionsList.forEach(r => roleGroups[r] = []);
+        
+        let totalPresent = 0;
+
+        students.forEach(s => { 
+            const st = dayData[s.id];
+            if(st === true || st === 'present') {
+                const r = s.role || '학생';
+                if(!roleGroups[r]) roleGroups[r] = [];
+                roleGroups[r].push(s.name);
+                totalPresent++;
+            }
+        });
+        
+        let resHtml = `<div style="background:#e8f5e9; padding:15px; border-radius:10px; margin-bottom:10px;">
+                    <div style="font-weight:bold; color:#2e7d32; margin-bottom: 12px; border-bottom: 1px solid #c8e6c9; padding-bottom: 8px;">✅ 총 출석: ${totalPresent}명</div>`;
+        
+        for(let role in roleGroups) {
+            const count = roleGroups[role].length;
+            resHtml += `<div style="display:flex; flex-direction:column; margin-bottom: 12px; border-bottom: 1px dashed #c8e6c9; padding-bottom: 8px;">
+                            <div style="display:flex; justify-content:space-between; color:#333; font-size:1.05em; margin-bottom: 4px;">
+                                <span style="font-weight:bold;">${role}</span>
+                                <strong style="color:${count > 0 ? '#2e7d32' : '#999'};">${count}명</strong>
+                            </div>`;
+            if(count > 0) {
+                resHtml += `<div style="font-size:0.9em; color:#444;">${roleGroups[role].join(', ')}</div>`;
+            } else {
+                resHtml += `<div style="font-size:0.85em; color:#999;">출석 인원 없음</div>`;
+            }
+            resHtml += `</div>`;
+        }
+        resHtml += `</div>`;
+        
+        const resElem = document.getElementById('roleInquiryResult');
+        if(resElem) resElem.innerHTML = resHtml;
+    }
+
+    function showPerfectAttendance() {
+        const currentYear = new Date().getFullYear().toString();
+        const recordedDates = Object.keys(attendance).filter(date => date.startsWith(currentYear)); 
+        const totalWeeks = recordedDates.length;
+        
+        if(totalWeeks===0) return showResultArea('🏆 개근 학생', '<div style="text-align:center; padding:20px;">기록이 없습니다.</div>');
+        
+        const perfectStudents = [];
+        students.forEach(s => { 
+            let pCount = 0; 
+            recordedDates.forEach(date => { 
+                const st = attendance[date][s.id];
+                if(st === true || st === 'present') pCount++; 
+            }); 
+            if(pCount === totalWeeks && totalWeeks > 0) perfectStudents.push(s.name); 
+        });
+        
+        let html = `<div style="text-align:center; margin-bottom:15px;">총 ${totalWeeks}주 출석완료</div>`;
+        if(perfectStudents.length === 0) html += `<div style="text-align:center; color:#c62828; font-weight:bold;">개근자가 없습니다.</div>`; 
+        else { html += `<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">`; perfectStudents.sort().forEach(name => { html += `<div style="background:#fff9c4; padding:10px 20px; border-radius:20px; font-weight:bold; color:#f57f17;">🎖 ${name}</div>`; }); html += `</div>`; }
+        showResultArea('🏆 개근 학생', html);
+    }
+
+    function showBirthdayInquiry() {
+        const today = new Date(); const curMonth = today.getMonth() + 1; const prevMonth = curMonth === 1 ? 12 : curMonth - 1; const nextMonth = curMonth === 12 ? 1 : curMonth + 1;
+        const getBirthdays = (m) => students.filter(s => s.birth && parseInt(s.birth.split('-')[1], 10) === m).sort((a,b) => parseInt(a.birth.split('-')[2], 10) - parseInt(b.birth.split('-')[2], 10));
+        const renderBlock = (title, m, isC) => {
+            const list = getBirthdays(m);
+            let h = `<div style="border:1px solid ${isC?'#a8e063':'#eee'}; background:${isC?'#f1f8e9':'#fff'}; border-radius:10px; padding:15px; margin-bottom:12px;"><div style="font-weight:bold; font-size:1.1em; color:${isC?'#2e7d32':'#333'}; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">${title} (${m}월)</div>`;
+            if(list.length===0) h += `<div style="color:#999; font-size:0.9em;">해당 월 생일자가 없습니다.</div>`; 
+            else { list.forEach(s => { h += `<div style="margin-bottom:5px;"><strong>${parseInt(s.birth.split('-')[2], 10)}일</strong> - ${s.name} <span style="font-size:0.8em; color:#777;">(${s.role || '학생'})</span></div>`; }); }
+            return h + `</div>`;
+        };
+        showResultArea('🎂 생일자 조회', renderBlock('지난 달', prevMonth, false) + renderBlock('이번 달', curMonth, true) + renderBlock('다음 달', nextMonth, false));
+    }
+
+    // ----------------------------------------------------
+    // 15. 기타 공통 기능 (이미지, 학생 CRUD)
+    // ----------------------------------------------------
+    function handleImageUpload(event, type) { 
+        const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image(); img.onload = function() {
+                const canvas = document.createElement('canvas'); const MAX = 200; 
+                let w = img.width; let h = img.height; if (w > MAX) { h *= MAX/w; w = MAX; }
+                canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                if (type === 'teacher') { 
+                    const tImg = document.getElementById('teacherImg'); if(tImg) tImg.src = dataUrl; 
+                    safeSet(k('profileImg'), dataUrl); 
+                }
+            }; img.src = e.target.result;
+        }; reader.readAsDataURL(file);
+    }
+    function triggerStudentImageUpload() { 
+        const i = document.getElementById('studentImageInput'); if(i) i.click(); 
+    }
+    function handleStudentImageUpload(event) {
+        const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image(); img.onload = function() {
+                const canvas = document.createElement('canvas'); let w = img.width; let h = img.height; if (w > 150) { h *= 150/w; w = 150; }
+                canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                tempStudentImageData = canvas.toDataURL('image/jpeg', 0.7);
+                const addM = document.getElementById('addModal');
+                const editM = document.getElementById('editModal');
+                if(addM && addM.style.display === 'flex') {
+                    const p = document.getElementById('addStudentImgPreview'); if(p) p.src = tempStudentImageData;
+                } else if(editM && editM.style.display === 'flex') {
+                    const p = document.getElementById('editStudentImgPreview'); if(p) p.src = tempStudentImageData;
+                }
+            }; img.src = e.target.result;
+        }; reader.readAsDataURL(file);
+    }
+
+    function renderCustomItemList() {
+        const list = document.getElementById('customItemList'); 
+        if(!list) return;
+        list.innerHTML = '';
+        if(customItems.length === 0) list.innerHTML = '<li style="text-align:center; color:#999; padding:10px;">항목 없음</li>';
+        customItems.forEach((item, idx) => { list.innerHTML += `<li class="custom-item-li"><span>${item}</span><button class="custom-item-del" onclick="deleteCustomItem(${idx})">✕</button></li>`; });
+    }
+    function addCustomItem() {
+        const valElem = document.getElementById('newCheckItemName');
+        const val = valElem ? valElem.value.trim() : ''; 
+        if(!val || customItems.includes(val)) return;
+        customItems.push(val); safeSet(k('customItems'), JSON.stringify(customItems));
+        if(valElem) valElem.value = ''; 
+        renderCustomItemList(); renderList();
+    }
+    function deleteCustomItem(idx) { 
+        if(confirm(`삭제하시겠습니까?`)) { 
+            customItems.splice(idx, 1); 
+            safeSet(k('customItems'), JSON.stringify(customItems)); 
+            renderCustomItemList(); renderList(); 
+        } 
+    }
+    function toggleCustomCheck(id, item) {
+        if (!customData[currentSelectedDate]) customData[currentSelectedDate] = {}; 
+        if (!customData[currentSelectedDate][id]) customData[currentSelectedDate][id] = {};
+        customData[currentSelectedDate][id][item] = !customData[currentSelectedDate][id][item]; 
+        safeSet(k('customData'), JSON.stringify(customData));
+    }
+
+    function addStudent() {
+        const nn = document.getElementById('newName');
+        const np = document.getElementById('newPhone');
+        const nb = document.getElementById('newBirth');
+        const nr = document.getElementById('newRole'); 
+        const ne = document.getElementById('newEvangelizer');  
+        
+        const name = nn ? nn.value.trim() : ''; 
+        if(!name) return alert('이름을 입력해주세요.');
+        
+        students.push({ 
+            id: Date.now().toString(), 
+            name: name, 
+            phone: np ? np.value : '', 
+            birth: nb ? nb.value : '',
+            role: (nr && nr.value.trim()) ? nr.value.trim() : '학생', 
+            evangelizer: ne ? ne.value.trim() : '', 
+            image: tempStudentImageData 
+        });
+        safeSet(k('students'), JSON.stringify(students)); 
+        closeModalSafe('addModal'); renderList(); renderUpcoming();
+    }
+    
+    function openEditModal(id) {
+        const s = students.find(x => x.id === id); if(!s) return;
+        tempStudentImageData = s.image || ''; let imgSrc = s.image; if (!imgSrc || imgSrc === 'null' || imgSrc === 'undefined' || imgSrc === '') imgSrc = defaultProfileSVG;
+        
+        const preview = document.getElementById('editStudentImgPreview'); if(preview) preview.src = imgSrc;
+        const eId = document.getElementById('editId'); if(eId) eId.value = s.id; 
+        const eName = document.getElementById('editName'); if(eName) eName.value = s.name; 
+        const ePhone = document.getElementById('editPhone'); if(ePhone) ePhone.value = s.phone || ''; 
+        const eBirth = document.getElementById('editBirth'); if(eBirth) eBirth.value = s.birth || ''; 
+        const eEvangelizer = document.getElementById('editEvangelizer'); if(eEvangelizer) eEvangelizer.value = s.evangelizer || ''; 
+        
+        const eRole = document.getElementById('editRole'); 
+        if(eRole) {
+            if (s.role && !roleOptionsList.includes(s.role)) {
+                eRole.innerHTML = `<option value="${s.role}">${s.role} (미등록)</option>` + roleOptionsList.map(r => `<option value="${r}">${r}</option>`).join('');
+            } else {
+                eRole.innerHTML = roleOptionsList.map(r => `<option value="${r}">${r}</option>`).join('');
+            }
+            eRole.value = s.role || (roleOptionsList.includes('학생') ? '학생' : '');
+        }
+        
+        openModalSafe('editModal');
+    }
+    
+    function updateStudent() {
+        const eId = document.getElementById('editId');
+        const eName = document.getElementById('editName');
+        const id = eId ? eId.value : ''; 
+        const name = eName ? eName.value.trim() : ''; 
+        if(!name) return;
+        
+        const idx = students.findIndex(x => x.id === id);
+        if(idx > -1) { 
+            const ePhone = document.getElementById('editPhone');
+            const eBirth = document.getElementById('editBirth');
+            const eRole = document.getElementById('editRole'); 
+            const eEvangelizer = document.getElementById('editEvangelizer'); 
+            
+            students[idx].name = name; 
+            students[idx].phone = ePhone ? ePhone.value : ''; 
+            students[idx].birth = eBirth ? eBirth.value : ''; 
+            students[idx].role = (eRole && eRole.value.trim()) ? eRole.value.trim() : '학생'; 
+            students[idx].evangelizer = eEvangelizer ? eEvangelizer.value.trim() : ''; 
+            students[idx].image = tempStudentImageData; 
+            
+            safeSet(k('students'), JSON.stringify(students)); 
+            closeModalSafe('editModal'); renderList(); renderUpcoming(); 
+        }
+    }
+    
+    function deleteStudent() {
+        const eId = document.getElementById('editId');
+        const eName = document.getElementById('editName');
+        const id = eId ? eId.value : ''; 
+        const name = eName ? eName.value : '';
+        
+        if(confirm(`'${name}' 학생을 완전히 삭제하시겠습니까?`)) {
+            students = students.filter(x => x.id !== id); safeSet(k('students'), JSON.stringify(students));
+            for(let d in attendance) delete attendance[d][id]; safeSet(k('attendance'), JSON.stringify(attendance));
+            for(let d in customData) delete customData[d][id]; safeSet(k('customData'), JSON.stringify(customData));
+            closeModalSafe('editModal'); renderList(); renderUpcoming();
+        }
+    }
+
+    // ----------------------------------------------------
+    // 16. UI 정보 초기화
+    // ----------------------------------------------------
+    function loadSavedData() {
+        const sElem = document.getElementById('schoolName');
+        if(sElem) sElem.innerText = currentDept;
+
+        try {
+            const info = getSafeJSON(k('classInfo'), null);
+            if (info) { 
+                const dElem = document.getElementById('deptName'); if(dElem) dElem.innerText = info.dept || ''; 
+                const gElem = document.getElementById('gradeNum'); if(gElem) gElem.innerText = info.grade || ''; 
+                const cElem = document.getElementById('classNum'); if(cElem) cElem.innerText = info.cls || ''; 
+                const tElem = document.getElementById('teacherName'); if(tElem) tElem.innerText = info.teacher || ''; 
+            }
+        } catch(e){}
+
+        document.querySelectorAll('.editable').forEach(el => { 
+            el.addEventListener('blur', saveClassInfo); 
+            el.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } }); 
+        });
+        
+        try {
+            let profileImg = safeGet(k('profileImg')); 
+            if (!profileImg || profileImg === 'null' || profileImg === 'undefined' || profileImg === '') { profileImg = defaultProfileSVG; }
+            const tImg = document.getElementById('teacherImg');
+            if(tImg) tImg.src = profileImg;
+        } catch(e){}
+    }
+    
+    function saveClassInfo() {
+        const dElem = document.getElementById('deptName');
+        const gElem = document.getElementById('gradeNum');
+        const cElem = document.getElementById('classNum');
+        const tElem = document.getElementById('teacherName');
+        const info = { 
+            dept: dElem ? dElem.innerText.trim() : '', 
+            grade: gElem ? gElem.innerText.trim() : '', 
+            cls: cElem ? cElem.innerText.trim() : '', 
+            teacher: tElem ? tElem.innerText.trim() : '' 
+        }; 
+        safeSet(k('classInfo'), JSON.stringify(info));
+    }
+
+    // ----------------------------------------------------
+    // 17. 🏷️ 직분 관리 (추가, 수정, 삭제) - select 방식으로 변경
+    // ----------------------------------------------------
+    function renderRoleSelects() {
+        const optionsHtml = roleOptionsList.map(r => `<option value="${r}">${r}</option>`).join('');
+        const nr = document.getElementById('newRole');
+        if(nr) nr.innerHTML = optionsHtml;
+        const er = document.getElementById('editRole');
+        if(er) {
+            const currentVal = er.value;
+            er.innerHTML = optionsHtml;
+            if(currentVal && roleOptionsList.includes(currentVal)) {
+                er.value = currentVal;
+            }
+        }
+    }
+
+    function openRoleSettingModal() {
+        renderRoleSettingList();
+        openModalSafe('roleSettingModal');
+    }
+
+    function renderRoleSettingList() {
+        const list = document.getElementById('roleItemList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (roleOptionsList.length === 0) list.innerHTML = '<li style="text-align:center; color:#999; padding:10px;">항목 없음</li>';
+        
+        roleOptionsList.forEach((r, idx) => {
+            list.innerHTML += `
+                <li class="custom-item-li">
+                    <span>${r}</span>
+                    <div>
+                        <button style="background:none; border:none; color:#1976D2; font-size:1.1em; cursor:pointer; margin-right:8px;" onclick="editRoleItem(${idx})">✏️</button>
+                        <button class="custom-item-del" onclick="deleteRoleItem(${idx})">✕</button>
+                    </div>
+                </li>
+            `;
+        });
+    }
+
+    function addRoleItem() {
+        const valElem = document.getElementById('newRoleItemName');
+        const val = valElem ? valElem.value.trim() : '';
+        if (!val) return alert('직분 이름을 입력해주세요.');
+        if (roleOptionsList.includes(val)) return alert('이미 존재하는 직분입니다.');
+        
+        roleOptionsList.push(val);
+        safeSet(k('roleOptionsList'), JSON.stringify(roleOptionsList));
+        if (valElem) valElem.value = '';
+        renderRoleSettingList();
+        renderRoleSelects();
+    }
+
+    function editRoleItem(idx) {
+        const newName = prompt('수정할 직분 이름을 입력하세요:', roleOptionsList[idx]);
+        if (newName !== null) {
+            const trimmed = newName.trim();
+            if (!trimmed) return alert('이름을 비울 수 없습니다.');
+            if (roleOptionsList.includes(trimmed) && trimmed !== roleOptionsList[idx]) {
+                return alert('이미 존재하는 직분입니다.');
+            }
+            roleOptionsList[idx] = trimmed;
+            safeSet(k('roleOptionsList'), JSON.stringify(roleOptionsList));
+            renderRoleSettingList();
+            renderRoleSelects();
+        }
+    }
+
+    function deleteRoleItem(idx) {
+        if (confirm(`'${roleOptionsList[idx]}' 항목을 삭제하시겠습니까?`)) {
+            roleOptionsList.splice(idx, 1);
+            safeSet(k('roleOptionsList'), JSON.stringify(roleOptionsList));
+            renderRoleSettingList();
+            renderRoleSelects();
+        }
+    }
+
+    // ==============================================
+    // 🚀 앱 실행 (무조건 실행되도록 가장 하단에 배치)
+    // ==============================================
+    initApp();
+
+</script>
+</body>
+</html>
